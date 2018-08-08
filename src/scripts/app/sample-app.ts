@@ -34,15 +34,11 @@ export class SampleApp {
     private fullScreenButton: PIXI.Container;
     private fullScreenText: PIXI.extras.BitmapText;
     private loadingText: PIXI.Text;
-    private explorer: RotatingSprite;
-    private filteredBunnies: PIXI.Container;
     private layeredBunnies: PIXI.Container;
     private particlesContainer: PIXI.particles.ParticleContainer;
-    private playMusicContainer: PIXI.Container;
 
 
     private particlesEmitter: PIXI.particles.Emitter;
-    private sound: Howl;
 
     private loader: PixiAssetsLoader;
 
@@ -52,6 +48,7 @@ export class SampleApp {
 
     private cardStacks :  {left:PIXI.Sprite[], right:PIXI.Sprite[]};
 
+    
     private getCardPos(side:Side) {
         const x = ((side === Side.left) ? 25 : 75) ;
         const y = 50;
@@ -59,6 +56,7 @@ export class SampleApp {
         const displacement = stackDisplacement * numInStack;
         return {x: x+ displacement, y:y+displacement}
     }
+
     private moveFirstToRightStackAndGetNewPosition() {
         const card= this.cardStacks.left.pop() ;
         if (!card)
@@ -71,6 +69,9 @@ export class SampleApp {
         const {x,y} = this.getCardPos(Side.right);
         return {card, x,y }
     }
+
+
+
     private textStyle = new PIXI.TextStyle({
         fontFamily: "Verdana",
         fontSize: 24,
@@ -112,7 +113,7 @@ export class SampleApp {
             {id: "stop", url: "assets/gfx/stop.png", priority: AssetPriority.LOW, type: "texture"},
             {id: "card", url: "assets/gfx/cardback.png", priority: AssetPriority.HIGH, type: "texture"},
             {id: "bubble", url: "assets/gfx/Bubbles99.png", priority: AssetPriority.NORMAL, type: "texture"},
-            {id: "atlas1", url: "assets/gfx/treasureHunter.json", priority: AssetPriority.LOWEST, type: "atlas"},
+            {id: "candies", url: "assets/gfx/candies.json", priority: AssetPriority.LOWEST, type: "atlas"},
             // 404 Assets to test loading errors
           ];
 
@@ -136,31 +137,6 @@ export class SampleApp {
         this.loader.addAssets(assets).load();
     }
 
-    public drawSquare(x = 0, y = 0, s = 50, r = 10): void {
-        this.drawRoundedRectangle(x, y, s, s, r);
-    }
-
-    public drawRoundedRectangle(x = 0, y = 0, w = 50, h = 50, r = 10): void {
-        this.fullScreenButton = new PIXI.Container();
-
-        const button = new PIXI.Graphics();
-        button.lineStyle(2, 0xFF00FF, 1);
-        button.beginFill(0xFF00BB, 0.25);
-        button.drawRoundedRect(0, 0, w, h, r);
-        button.endFill();
-
-        button.interactive = true;
-        button.buttonMode = true;
-        button.on("pointerup", () => {
-            // pointerdown does not trigger a user event in chrome-android
-            Wrapper.toggleFulscreen(document.getElementById("app-root"));
-        });
-
-        this.fullScreenButton.addChild(button);
-        this.fullScreenButton.position.set(x, y);
-
-        this.app.stage.addChild(this.fullScreenButton);
-    }
 
     private onAssetsLoaded(args: { priority: number, assets: LoadAsset[] }): void {
         window.console.log(`[SAMPLE APP] onAssetsLoaded ${args.assets.map(loadAsset => loadAsset.asset.id)}`);
@@ -176,6 +152,9 @@ export class SampleApp {
         this.assetsCount[args.priority].progress = args.progress;
 
         this.loadingText.text = `Loading... ${this.loadingProgress}%`;
+        // console.log(this.loadingProgress)
+        if (this.loadingProgress >= 95)
+            this.app.stage.removeChild(this.loadingText)
     }
 
     private onAssetsError(args: LoadAsset): void {
@@ -186,15 +165,6 @@ export class SampleApp {
         window.console.log("[SAMPLE APP] onAllAssetsLoaded !!!!");
     }
 
-    private drawScreenBorder(width = 4): void {
-        const halfWidth = width / 2;
-
-        this.screenBorder = new PIXI.Graphics();
-        this.screenBorder.lineStyle(width, 0xFF00FF, 1);
-        this.screenBorder.drawRect(halfWidth, halfWidth, this.app.initialWidth - width, this.app.initialHeight - width);
-
-        this.app.stage.addChild(this.screenBorder);
-    }
 
     private onResizeStart(): void {
         window.console.log("RESIZE STARTED!");
@@ -236,9 +206,7 @@ export class SampleApp {
     }
 
     private createViews(): void {
-        this.drawSquare(this.app.initialWidth / 2 - 25, this.app.initialHeight / 2 - 25);
-        this.drawScreenBorder();
-        this.drawLoadingText(this.app.initialWidth / 5, 10);
+            this.drawLoadingText(this.app.initialWidth / 5, 10);
     }
 
     private createViewsByPriority(priority: number): void {
@@ -253,6 +221,10 @@ export class SampleApp {
 
             case AssetPriority.NORMAL:
                 this.drawParticles();
+                break;
+
+            case AssetPriority.LOWEST:
+                this.drawTextWithImages()
                 break;
             default:
                 break;
@@ -297,6 +269,11 @@ export class SampleApp {
 
 
 
+    private drawTextWithImages(): void {
+        let id = PIXI.loader.resources.candies.textures;
+        console.log("drawTextWithImagges",id);     
+        
+    }
     private drawLayeredBunnies(): void {
         // bunniesContainer.on("pointerdown", () => {
         //     const index = Math.round(Math.random() * (filters.length - 1));
@@ -427,7 +404,6 @@ export class SampleApp {
         window.console.log(this.screenBorder.width, this.screenBorder.height);
         */
         this.app.stage.removeChild(this.screenBorder);
-        this.drawScreenBorder();
 
         if (this.fullScreenButton) {
             this.fullScreenButton.position.set(this.app.initialWidth / 2 - this.fullScreenButton.width / 2, this.app.initialHeight / 2 - this.fullScreenButton.height / 2);
