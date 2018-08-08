@@ -267,13 +267,26 @@ export class SampleApp {
     //     TweenLite.to(this.explorer, 2, {y: this.app.initialHeight / 2});
     // }
 
-
-
     private drawTextWithImages(): void {
-        let id = PIXI.loader.resources.candies.textures;
-        console.log("drawTextWithImagges",id);     
-        
+        let images = PIXI.loader.resources.candies.textures;
+        if (images) {
+            const imageTextures = Object.keys(<{}>images).map((textureName) => images[textureName])
+            const textElements=["bla",1,"raara",3].map(txtOrImage => 
+                typeof txtOrImage === "string" ? new PIXI.Text(txtOrImage) : new PIXI.Sprite(imageTextures[txtOrImage])
+            )
+            // let startPos = {x: 10, y:40};
+            let lastX=0;
+            const textWithImageContainer = new PIXI.Container();
+            for (let e of textElements) {
+                e.position.x =lastX;
+                lastX += e.width;
+                textWithImageContainer.addChild(e);
+            }
+            this.app.stage.addChild(textWithImageContainer);
+            console.log(textElements);
+        }
     }
+
     private drawLayeredBunnies(): void {
         // bunniesContainer.on("pointerdown", () => {
         //     const index = Math.round(Math.random() * (filters.length - 1));

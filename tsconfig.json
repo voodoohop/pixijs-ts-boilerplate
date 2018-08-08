@@ -2,7 +2,7 @@
   "compileOnSave": false,
   "compilerOptions": {
     "baseUrl": ".",
-    "strictNullChecks": true,
+    "strictNullChecks": false,
     "moduleResolution": "node",
     "target": "es5",
     "outDir": "./dist/",
