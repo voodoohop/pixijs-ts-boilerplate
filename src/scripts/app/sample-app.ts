@@ -1,5 +1,6 @@
 import {RotatingSprite} from "app/rotating-sprite";
 import {TweenLite} from "gsap";
+// import {Stack} from "../vendor/basarat/typescript-collections"
 import "howler";
 import {
     Dom,
@@ -17,7 +18,11 @@ import {
     ShockwaveFilter,
 } from "pixi-filters";
 import "pixi-particles";
-import "pixi-spine";
+
+
+const stackDisplacement = 0.05;    
+
+enum Side {left,right };
 
 /**
  * Showcase for PixiAppWrapper class.
@@ -34,7 +39,7 @@ export class SampleApp {
     private layeredBunnies: PIXI.Container;
     private particlesContainer: PIXI.particles.ParticleContainer;
     private playMusicContainer: PIXI.Container;
-    private spineBoy: PIXI.spine.Spine;
+
 
     private particlesEmitter: PIXI.particles.Emitter;
     private sound: Howl;
@@ -45,6 +50,27 @@ export class SampleApp {
     private loadingProgress: number;
     private assetsCount: { [key: number]: { total: number, progress: number } } = {};
 
+    private cardStacks :  {left:PIXI.Sprite[], right:PIXI.Sprite[]};
+
+    private getCardPos(side:Side) {
+        const x = ((side === Side.left) ? 25 : 75) ;
+        const y = 50;
+        const numInStack = (side === Side.left ? this.cardStacks.left : this.cardStacks.right).length;
+        const displacement = stackDisplacement * numInStack;
+        return {x: x+ displacement, y:y+displacement}
+    }
+    private moveFirstToRightStackAndGetNewPosition() {
+        const card= this.cardStacks.left.pop() ;
+        if (!card)
+            return undefined;
+        // const card =  topBunny;
+        const newLength = this.cardStacks.right.push(card);
+        const displacement = stackDisplacement * newLength;
+        card.zIndex = 144+newLength;
+        console.log(displacement);
+        const {x,y} = this.getCardPos(Side.right);
+        return {card, x,y }
+    }
     private textStyle = new PIXI.TextStyle({
         fontFamily: "Verdana",
         fontSize: 24,
@@ -57,11 +83,11 @@ export class SampleApp {
 
     constructor() {
         const canvas = Dom.getElementOrCreateNew<HTMLCanvasElement>("app-canvas", "canvas", document.getElementById("app-root"));
-
+        this.cardStacks = {left:[],right:[]}
         // if no view is specified, it appends canvas to body
         const appOptions: WrapperOpts = {
-            width: 1920,
-            height: 1080,
+            width:  100,
+            height: 100,
             scale: "keep-aspect-ratio",
             align: "middle",
             resolution: window.devicePixelRatio,
@@ -84,15 +110,11 @@ export class SampleApp {
             {id: "desyrel", url: "assets/fonts/desyrel.xml", priority: AssetPriority.HIGHEST, type: "font"},
             {id: "play", url: "assets/gfx/play.png", priority: AssetPriority.LOW, type: "texture"},
             {id: "stop", url: "assets/gfx/stop.png", priority: AssetPriority.LOW, type: "texture"},
-            {id: "bunny", url: "assets/gfx/bunny.png", priority: AssetPriority.HIGH, type: "texture"},
-            {id: "spineboy", url: "assets/gfx/spineboy.json", priority: AssetPriority.HIGHEST, type: "animation"},
+            {id: "card", url: "assets/gfx/cardback.png", priority: AssetPriority.HIGH, type: "texture"},
             {id: "bubble", url: "assets/gfx/Bubbles99.png", priority: AssetPriority.NORMAL, type: "texture"},
-            {id: "sound1", url: "assets/sfx/sound1.mp3", priority: AssetPriority.LOW, autoplay: false, loop: false, mute: false, rate: 1, type: "sound"} as Asset,
             {id: "atlas1", url: "assets/gfx/treasureHunter.json", priority: AssetPriority.LOWEST, type: "atlas"},
             // 404 Assets to test loading errors
-            {id: "explorer", url: "assets/gfx/explorer.png", priority: AssetPriority.LOWEST, type: "texture"},
-            {id: "sound2", url: "assets/sfx/sound2.mp3", priority: AssetPriority.LOW, autoplay: false, loop: false, mute: false, rate: 1, type: "sound"} as Asset,
-        ];
+          ];
 
         assets.forEach(asset => {
            if (!this.assetsCount[asset.priority]) {
@@ -142,12 +164,6 @@ export class SampleApp {
 
     private onAssetsLoaded(args: { priority: number, assets: LoadAsset[] }): void {
         window.console.log(`[SAMPLE APP] onAssetsLoaded ${args.assets.map(loadAsset => loadAsset.asset.id)}`);
-
-        args.assets.forEach(loadAsset => {
-            if (loadAsset.asset.id === "sound1" && loadAsset.loaded) {
-                this.sound = (loadAsset.asset as SoundAsset).howl!;
-            }
-        });
 
         this.createViewsByPriority(args.priority);
     }
@@ -229,26 +245,15 @@ export class SampleApp {
         switch (priority) {
             case AssetPriority.HIGHEST:
                 this.addFullscreenText(this.app.initialWidth / 2, this.app.initialHeight / 2 - 125);
-                this.drawSpineBoyAnim();
                 break;
 
             case AssetPriority.HIGH:
-                this.drawBunnies();
                 this.drawLayeredBunnies();
                 break;
 
             case AssetPriority.NORMAL:
                 this.drawParticles();
                 break;
-
-            case AssetPriority.LOW:
-                this.drawPlayMusic();
-                break;
-
-            case AssetPriority.LOWEST:
-                this.drawRotatingExplorer();
-                break;
-
             default:
                 break;
         }
@@ -258,84 +263,46 @@ export class SampleApp {
         this.app.stage.removeChildren();
     }
 
-    private drawRotatingExplorer(): void {
-        // This creates a texture from a "explorer.png" within the atlas
-        this.explorer = new RotatingSprite(PIXI.loader.resources.atlas1.textures!["explorer.png"]);
-        this.explorer.scale.set(2, 2);
+    // private drawRotatingExplorer(): void {
+    //     // This creates a texture from a "explorer.png" within the atlas
+    //     this.explorer = new RotatingSprite(PIXI.loader.resources.atlas1.textures!["explorer.png"]);
+    //     this.explorer.scale.set(2, 2);
 
-        // Setup the position of the explorer
-        const maxEdge = Math.max(this.explorer.width, this.explorer.height);
-        this.explorer.position.set(Math.ceil(maxEdge / 2) + 10, Math.ceil(maxEdge / 2) + 10);
+    //     // Setup the position of the explorer
+    //     const maxEdge = Math.max(this.explorer.width, this.explorer.height);
+    //     this.explorer.position.set(Math.ceil(maxEdge / 2) + 10, Math.ceil(maxEdge / 2) + 10);
 
-        // Rotate around the center
-        this.explorer.anchor.set(0.5, 0.5);
+    //     // Rotate around the center
+    //     this.explorer.anchor.set(0.5, 0.5);
 
-        this.explorer.interactive = true;
-        this.explorer.buttonMode = true;
-        this.explorer.rotationVelocity = 0.02;
+    //     this.explorer.interactive = true;
+    //     this.explorer.buttonMode = true;
+    //     this.explorer.rotationVelocity = 0.02;
 
-        this.explorer.on("pointerdown", () => {
-            this.explorer.rotationVelocity *= -1;
-        });
+    //     this.explorer.on("pointerdown", () => {
+    //         this.explorer.rotationVelocity *= -1;
+    //     });
 
-        // Add the explorer to the scene we are building
-        this.app.stage.addChild(this.explorer);
+    //     // Add the explorer to the scene we are building
+    //     this.app.stage.addChild(this.explorer);
 
-        // Listen for frame updates
-        this.app.ticker.add(() => {
-            // each frame we spin the explorer around a bit
-            this.explorer.rotation += this.explorer.rotationVelocity;
-        });
+    //     // Listen for frame updates
+    //     this.app.ticker.add(() => {
+    //         // each frame we spin the explorer around a bit
+    //         this.explorer.rot    ation += this.explorer.rotationVelocity;
+    //     });
 
-        TweenLite.to(this.explorer, 2, {y: this.app.initialHeight / 2});
-    }
+    //     TweenLite.to(this.explorer, 2, {y: this.app.initialHeight / 2});
+    // }
 
-    private drawBunnies(): void {
-        this.filteredBunnies = new PIXI.Container();
-        this.app.stage.addChild(this.filteredBunnies);
 
-        const text = new PIXI.Text("Click us!", this.textStyle);
-        text.anchor.set(0.5, 0.5);
-        this.filteredBunnies.addChild(text);
-
-        const bunniesContainer = new PIXI.Container();
-        bunniesContainer.position.set(0, text.height + 5);
-        bunniesContainer.interactive = true;
-        bunniesContainer.buttonMode = true;
-        bunniesContainer.on("pointerdown", () => {
-            const index = Math.round(Math.random() * (filters.length - 1));
-            const randomFilter = filters[index];
-            bunniesContainer.filters = [randomFilter];
-        });
-        this.filteredBunnies.addChild(bunniesContainer);
-
-        // Create a 5x5 grid of bunnies
-        for (let i = 0; i < 25; i++) {
-            const bunny = new PIXI.Sprite(PIXI.loader.resources.bunny.texture);
-            bunny.x = (i % 5) * 40;
-            bunny.y = Math.floor(i / 5) * 40;
-            bunniesContainer.addChild(bunny);
-        }
-
-        text.position.set(bunniesContainer.width / 2, 0);
-
-        bunniesContainer.hitArea = new PIXI.Rectangle(0, 0, bunniesContainer.width, bunniesContainer.height);
-
-        this.filteredBunnies.x = this.app.initialWidth - this.filteredBunnies.width - 10;
-        this.filteredBunnies.y = this.app.initialHeight - this.filteredBunnies.height;
-
-        // Filters
-        const filters = [
-            new AsciiFilter(),
-            new CRTFilter(),
-            new GlowFilter(),
-            new OldFilmFilter(),
-            new ShockwaveFilter(new PIXI.Point(bunniesContainer.width / 2, bunniesContainer.height / 2)),
-            new OutlineFilter(1, 0xFF0000),
-        ];
-    }
 
     private drawLayeredBunnies(): void {
+        // bunniesContainer.on("pointerdown", () => {
+        //     const index = Math.round(Math.random() * (filters.length - 1));
+        //     const randomFilter = filters[index];
+        //     bunniesContainer.filters = [randomFilter];
+        // });
         const layer = new PIXI.display.Layer();
         layer.group.enableSort = true;
         this.app.stage.addChild(layer);
@@ -345,27 +312,35 @@ export class SampleApp {
         this.layeredBunnies.parentLayer = layer;
 
         // Create a 5x5 grid of bunnies
-        for (let i = 0; i < 25; i++) {
-            const bunny = new PIXI.Sprite(PIXI.loader.resources.bunny.texture);
-            bunny.x = (i % 5) * 20;
-            bunny.y = Math.floor(i / 5) * 20;
-            this.layeredBunnies.addChild(bunny);
+        for (let i = 0; i < 144; i++) {
+            const card = new PIXI.Sprite(PIXI.loader.resources.card.texture);
+            
+            card.anchor.set(0.5);
+            card.scale.set(20.0 / card.width); 
+            // card.scale.y = 100.0 / card.width;
+            const {x,y} = this.getCardPos(Side.left);
+            card.x = x;
+            card.y = y;
+            this.layeredBunnies.addChild(card);
 
-            bunny.parentLayer = layer;
-
-            if (i % 2 === 0) {
-                bunny.tint = 0x999999;
-                bunny.zIndex = 0;
-                // bunny.zOrder = 1;
-            } else {
-                bunny.zIndex = 1;
-                // bunny.zOrder = 0;
-            }
+            card.parentLayer = layer;
+            card.zIndex = i;
+            this.cardStacks.left.push(card);
         }
 
-        this.layeredBunnies.x = (this.app.initialWidth - this.layeredBunnies.width) - 10;
-        this.layeredBunnies.y = 10;
-    }
+        this.layeredBunnies.position.set(0);
+   
+        console.log(this.layeredBunnies);
+
+        setInterval(() => {
+            const hasCardToMove = this.moveFirstToRightStackAndGetNewPosition();
+            if (hasCardToMove) {
+                const {card,x,y} = hasCardToMove;
+                TweenLite.to(card, 2, {x,y});
+            }
+        },1000)
+    };
+    
 
     private drawParticles(): void {
         this.particlesContainer = new PIXI.particles.ParticleContainer();
@@ -444,75 +419,6 @@ export class SampleApp {
         this.app.ticker.add(update);
     }
 
-    private drawSpineBoyAnim(): void {
-        // create a spine boy
-        this.spineBoy = new PIXI.spine.Spine(PIXI.loader.resources.spineboy.spineData);
-
-        this.spineBoy.scale.set(0.5);
-
-        // set the position
-        this.spineBoy.x = this.app.initialWidth * 0.5;
-        this.spineBoy.y = this.app.initialHeight;
-
-        // set up the mixes!
-        this.spineBoy.stateData.setMix("walk", "jump", 0.2);
-        this.spineBoy.stateData.setMix("jump", "walk", 0.4);
-
-        // play animation
-        this.spineBoy.state.setAnimation(0, "walk", true);
-
-        this.spineBoy.interactive = true;
-        this.spineBoy.buttonMode = true;
-
-        this.spineBoy.on("pointerdown", () => {
-            this.spineBoy.state.setAnimation(0, "jump", false);
-            this.spineBoy.state.addAnimation(0, "walk", true, 0);
-        });
-
-        this.app.stage.addChild(this.spineBoy);
-    }
-
-    private drawPlayMusic(): void {
-        this.sound.on("end", () => {
-            playButton.visible = true;
-            stopButton.visible = false;
-        });
-
-        this.playMusicContainer = new PIXI.Container();
-
-        const playButton = new PIXI.Sprite(PIXI.loader.resources.play.texture);
-        playButton.scale.set(0.75, 0.75);
-        playButton.interactive = true;
-        playButton.buttonMode = true;
-        playButton.on("pointerup", () => {
-            this.sound.play();
-            playButton.visible = false;
-            stopButton.visible = true;
-        });
-
-        const stopButton = new PIXI.Sprite(PIXI.loader.resources.stop.texture);
-        stopButton.scale.set(0.75, 0.75);
-        stopButton.interactive = true;
-        stopButton.buttonMode = true;
-        stopButton.visible = false;
-
-        stopButton.on("pointerup", () => {
-            this.sound.stop();
-            stopButton.visible = false;
-            playButton.visible = true;
-        });
-
-        const text = new PIXI.extras.BitmapText("Click to play music!", this.bitmapTextStyle);
-        text.position.set(playButton.width + 10, playButton.height / 2 - text.height / 2);
-
-        this.playMusicContainer.addChild(playButton);
-        this.playMusicContainer.addChild(stopButton);
-        this.playMusicContainer.addChild(text);
-
-        this.playMusicContainer.position.set(this.app.initialWidth / 2 - this.playMusicContainer.width / 2, this.app.initialHeight * 0.1);
-
-        this.app.stage.addChild(this.playMusicContainer);
-    }
 
     private relocateViews(): void {
         /*
@@ -535,31 +441,16 @@ export class SampleApp {
             this.loadingText.position.set(this.app.initialWidth / 5, 10);
         }
 
-        if (this.filteredBunnies) {
-            this.filteredBunnies.position.set(this.app.initialWidth - this.filteredBunnies.width - 10, this.app.initialHeight - this.filteredBunnies.height);
-        }
 
         if (this.layeredBunnies) {
-            this.layeredBunnies.position.set((this.app.initialWidth - this.layeredBunnies.width) - 10, 10);
+            this.layeredBunnies.position.set(0);
+                   // this.layeredBunnies.scale.set(this.app.initialWidth,this.app.initialWidth);
         }
 
         if (this.particlesContainer) {
             this.particlesContainer.position.set(this.app.initialWidth * 0.75, this.app.initialHeight * 0.5);
         }
 
-        if (this.spineBoy) {
-            this.spineBoy.position.set(this.app.initialWidth * 0.5, this.app.initialHeight);
-        }
-
-        if (this.playMusicContainer) {
-            this.playMusicContainer.position.set(this.app.initialWidth / 2 - this.playMusicContainer.width / 2, this.app.initialHeight * 0.1);
-        }
-
-        if (this.explorer) {
-            TweenLite.killTweensOf(this.explorer, true);
-            const maxEdge = Math.max(this.explorer.width, this.explorer.height);
-            this.explorer.position.set(Math.ceil(maxEdge / 2) + 10, Math.ceil(maxEdge / 2) + 10);
-            TweenLite.to(this.explorer, 2, {y: this.app.initialHeight / 2});
-        }
+ 
     }
 }
