@@ -269,21 +269,12 @@ export class SampleApp {
 
     private drawTextWithImages(): void {
         let images = PIXI.loader.resources.candies.textures;
-        if (images) {
+        if (images) {   
             const imageTextures = Object.keys(<{}>images).map((textureName) => images[textureName])
-            const textElements=["bla",1,"raara",3].map(txtOrImage => 
-                typeof txtOrImage === "string" ? new PIXI.Text(txtOrImage) : new PIXI.Sprite(imageTextures[txtOrImage])
-            )
-            // let startPos = {x: 10, y:40};
-            let lastX=0;
-            const textWithImageContainer = new PIXI.Container();
-            for (let e of textElements) {
-                e.position.x =lastX;
-                lastX += e.width;
-                textWithImageContainer.addChild(e);
-            }
+            const textSource = ["bla",1,"raara",3,"rappmblamla",27];
+            const textWithImageContainer = getTextWithImage(textSource, imageTextures, {fill:"white"});
             this.app.stage.addChild(textWithImageContainer);
-            console.log(textElements);
+            // console.log(textElements);
         }
     }
 
@@ -443,3 +434,24 @@ export class SampleApp {
  
     }
 }
+
+function createImageSprite(texture:PIXI.Texture, height:number) {
+   const sprite = new PIXI.Sprite(texture);
+   sprite.scale.set(height/sprite.height);
+   return sprite;
+}
+function getTextWithImage(textSource: (string | number)[], imageTextures: PIXI.Texture[], textStyle:{}) {
+    const DUMMYTEXTELEMENTHEIGHT = (new PIXI.Text("DUMMY",textStyle)).height;
+    const textElements = textSource.map(txtOrImage => typeof txtOrImage === "string" ? new PIXI.Text(txtOrImage,textStyle) : createImageSprite(imageTextures[txtOrImage], DUMMYTEXTELEMENTHEIGHT) );
+    // let startPos = {x: 10, y:40};
+    let lastX = 0;
+    const textWithImageContainer = new PIXI.Container();
+    for (let e of textElements) {
+        e.position.x = lastX;
+        lastX += e.width;
+        textWithImageContainer.addChild(e);
+    }
+    textWithImageContainer.scale.set(0.2)
+    return textWithImageContainer;
+}
+
