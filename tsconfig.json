@@ -28,7 +28,6 @@
       "pixi-spine": ["src/scripts/vendor/pixijs/pixi-spine/pixi-spine"],
       "pixi-filters": ["src/scripts/vendor/pixijs/pixi-filters"],
       "@pixi/filter-*": ["src/scripts/vendor/pixijs/pixi-filters/filters/filter-*"],
-      "howler": ["src/scripts/vendor/goldfire/howler.js"],
       "typescript-collections/*": ["src/scripts/vendor/basarat/typescript-collections/*"]
     }
   },
