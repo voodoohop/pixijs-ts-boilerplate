@@ -54,11 +54,11 @@ function randomWord() {
         const {textRenderer,numImages} = initializeTextWithImages("candies");
         console.log(stage)
         const interval = setInterval(() => {
-            const t = textRenderer(getRandomImageText(numImages), {fill: "white", fontSize: Math.random()*20+6});
+            const t = textRenderer(getRandomImageText(numImages), {fill: "white", fontSize: Math.random()*10+14});
             t.position.set(Math.random()*(500-t.width),Math.random()*(500-t.height))
             stage.addChild(t);
-            setTimeout(() => stage.removeChild(t), Math.random()*5000);
-        }, 1000)
+            setTimeout(() => stage.removeChild(t), Math.random()*8000);
+        }, 2000)
 
         return function removeTextWithImage() {
             clearInterval(interval);
